@@ -1,32 +1,59 @@
 <template>
-  <div id="app">
-    <nav>
-      <router-link to="/">Home</router-link> |
-      <router-link to="/about">About</router-link>
-    </nav>
-    <router-view/>
-  </div>
+  <v-app>
+    <v-app-bar
+      app
+      color="transparent"
+      dark
+    >
+      <div>
+        <v-img
+          contain
+          min-width="100"
+          src="./assets/scam2.jpg"
+          gradient="to top right, rgba(55,236,186,.3), rgba(25,32,72,.3)"
+        />
+      </div>
+      <v-spacer></v-spacer>
+      <v-icon light @click="cerrarsesion" v-if="datos.length !== 0">mdi-close-circle-multiple</v-icon>
+    </v-app-bar>
+
+    <v-main class="background">
+      <router-view/>
+    </v-main>
+  </v-app>
 </template>
 
-<style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-}
+<script>
+import { mapState, mapMutations } from 'vuex';
 
-nav {
-  padding: 30px;
-}
+export default {
+  name: 'App',
 
-nav a {
-  font-weight: bold;
-  color: #2c3e50;
-}
+  data () {
+    return {
+      placa: '',
+      trueFalse: true
+    }
+  },
+  computed: {
+    ...mapState(['datos']),
+  },
+  methods: {
+    ...mapMutations(['cerrar']),
+    cerrarsesion() {
+      this.cerrar()
+      this.$router.push( {name: "LoginChoferes"} )
+    },
+  }
+};
+</script>
 
-nav a.router-link-exact-active {
-  color: #42b983;
+<style scoped>
+.background{
+  /* background: url('./assets/Imagen1.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  height: 100%; */
+  background-color: #D0DAE0;
 }
 </style>
