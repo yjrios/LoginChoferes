@@ -26,9 +26,9 @@
         <v-toolbar-title class="pt-4">Lista de viajes para vehículo <span class="font-weight-bold success--text">{{ placa }}</span></v-toolbar-title>
       </v-toolbar>
     </template>
-    <template v-slot:expanded-item="{ headers, item }">
+    <template v-slot:expanded-item="{ headers }">
       <td :colspan="headers.length" align="center">
-        <v-layout :wrap="true">
+        <!-- <v-layout :wrap="true">
           <v-flex cols12 xs12 sm12 md4 lg5 v-if="showInicio">
             <v-text-field
             prepend-icon="mdi-home-export-outline"
@@ -43,15 +43,15 @@
             <span class="font-weight-black ml-0 pl-0">ACTUALIZANDO VIAJE NÚMERO {{ item.id_Viaje }}</span>
           </v-flex>
           <v-spacer></v-spacer>
-        </v-layout>
+        </v-layout> -->
         <v-layout :wrap="true">
           <!-- ########################################  AQUI SLIDER ################################## -->
           <v-flex cols12 xs12 sm12 md5 lg4>
             <template>
               <v-sheet
-                class="mx-auto mb-4"
+                class="mx-auto mb-4 mt-4"
                 elevation="8"
-                max-width="400"
+                max-width="300"
               >
                 <v-slide-group
                   v-model="model"
@@ -64,9 +64,9 @@
                   >
                     <v-card
                     :color="n.event === model[selected].event ? 'success' : 'grey lighten-1'"
-                    class="ma-1"
+                    class="mx-5 mt-2"
                     height="40"
-                    width="80"
+                    width="90"
                     >
                       <v-row
                         class="fill-height"
@@ -75,7 +75,6 @@
                       >
                         <v-scale-transition>
                           <v-icon
-                            align="left"
                             v-if="n.event === model[selected].event"
                             color="black"
                             size="15"
@@ -110,7 +109,6 @@
           </v-flex>
           <v-flex cols12 xs5 sm5 md2 lg3>
             <v-menu
-              class="mt-5"
               v-model="menu1"
               :close-on-content-click="false"
               :nudge-right="40"
@@ -120,9 +118,9 @@
             >
               <template v-slot:activator="{ on, attrs }">
                 <v-text-field
-                class="ml-5"
+                class="ml-5 mt-10"
                 v-model="fecha"
-                :label="status ? 'Fecha de salida' : 'Fecha de llegada'"
+                :label="status ? 'FECHA DE SALIDA' : 'FECHA DE LLEGADA'"
                 prepend-icon="mdi-calendar"
                 readonly
                 v-bind="attrs"
@@ -149,9 +147,9 @@
             >
               <template v-slot:activator="{ on, attrs }">
                 <v-text-field
-                class="ml-5"
+                class="ml-5 mt-10"
                 v-model="hora"
-                :label="status ? 'Hora de salida' : 'Hora de llegada'"
+                :label="status ? 'HORA DE SALIDA' : 'HORA DE LLEGADA'"
                 prepend-icon="mdi-clock-time-four-outline"
                 readonly
                 v-bind="attrs"
@@ -170,8 +168,8 @@
           <!-- ########################################  AQUI SLIDER ################################## -->
           <v-flex cols12 xs2 sm2 md1 lg1>
             <v-icon
-              @click="dialog = true, cargafecha(), isEditing = !isEditing"
-              class="pt-5"
+              @click="dialog = true, guardarfecha(), isEditing = !isEditing"
+              class="pt-5 mt-10"
               :color="isEditing ? 'success' : 'info'"
               v-text="'mdi-check-outline'"
             ></v-icon>
@@ -181,10 +179,9 @@
               <v-btn
                 color="success"
                 fab
-                class="mb-2"
-                @click="dialog = true, cargafecha(), rigthnow = !rigthnow"
+                class="mb-2 mt-8"
               >
-              <v-icon color="black" @click="dialog = true, cargafecha(), rigthnow = !rigthnow">mdi-alarm</v-icon></v-btn>
+              <v-icon color="black" @click="dialog = true, rigthnow = !rigthnow, guardarfecha()">mdi-alarm</v-icon></v-btn>
             </div>
           </v-flex>
         </v-layout>
@@ -206,6 +203,8 @@ import modal from './ModalNotificacion.vue'
 export default {
     data () {
       return {
+        errorTrue: false,
+        idViaje_message: 0,
         rigthnow: false,
         placa: '',
         showInicio: false,
@@ -218,9 +217,9 @@ export default {
         objectViaje: new Object,
         select: [],
         eventos: [],
-        selected: 4,
+        selected: 2,
         fecha: new Date().toISOString().substr(0,10),
-        model: [{event:'Salida'},{event:'Carga'},{event:'Descarga'},{event:'Retorno'}],
+        model: [{ event:'Carga'},{event:'Descarga'}],
         status: false,
         origen: '',
         destino: '',
@@ -247,27 +246,38 @@ export default {
     computed: {
       ...mapState(['dirapi','datos']),
       checarprogreso () {
-        if(this.expanded.length !== 0) {
+        this.iniciarmodel()
+        this.errorTrue = false
+        if (this.expanded.length !== 0) {
           this.expanded.map(item => {
-            try{
-              axios.get(this.dirapi+'/amc/getdetallesviaje/'+item.id_Viaje)
-              .then(resp => {
-                if (resp.data) {
-                  this.verificarFechas(resp.data)
-                  this.dialog = false
-                  this.isEditing = false
-                  this.rigthnow = false
-                }
-              })
-              .catch(error => {
+            this.idViaje_message = item.id_Viaje
+            if (item.ViajeAsoc !== '' && item.ViajeAsoc !== null) {
+              try {
+                axios.put(`${this.dirapi}/amc/putdetalleeventoasociado/${item.id_Viaje}`, {Viaje_Asoc: item.ViajeAsoc})
+                  .then(resp => {
+                    if (resp.data.message === 'Viaje padre no ha culminado') {
+                      this.tipo = false
+                      this.mensaje = '¡' + resp.data.message + '!'
+                      this.titulo = '¡Error!'
+                      this.errorTrue = true
+                    } else {
+                      this.lista = []
+                      this.cargargrid()
+                      this.obtenerdetalleseventos(item.id_Viaje)
+                    }
+                  })
+                  .catch(err => {
+                    this.tipo = false
+                    this.mensaje = 'Error al actualizar'
+                    this.titulo = '¡Error!'
+                  })
+              } catch (error) {
                 this.tipo = false
-                this.mensaje = 'Hubo un problema al cargar la información'
+                this.mensaje = 'Error al actualizar'
                 this.titulo = '¡Error!'
-              })
-            }catch(e){
-              this.tipo = false
-              this.mensaje = 'Error en el servidor'
-              this.titulo = '¡Error!'
+              }
+            } else {
+              this.obtenerdetalleseventos(item.id_Viaje)
             }
           })
         }
@@ -277,7 +287,7 @@ export default {
       }
     },
     watch: {
-      viaje(val){
+      viaje(val) {
         this.cargargrid()
       }
     },
@@ -285,14 +295,14 @@ export default {
       this.getEventos()
       this.cargargrid()
       this.iniciarmodel()
+      this.objectViaje = {
+        carga : '',
+        descarga : ''
+      }
     },
     methods: {
       getcolor (status) {
-        if (status === 'PENDIENTE') {
-          return '#C9C9C9'
-        } else {
-          return '#006BB0'
-        }
+        return status === 'PENDIENTE' ? '#C9C9C9' : '#006BB0'
       },
       async cargargrid () {
         this.placa = localStorage.getItem('placa')
@@ -307,14 +317,14 @@ export default {
                   this.destino = ele.descripcion
                 }
               })
-              
               this.info = {
                 id_Viaje: item.id_Viaje,
                 placa: item.placa,
                 cedula: item.cedula,
                 origen: this.origen,
                 destino: this.destino,
-                status: item.status
+                status: item.status,
+                ViajeAsoc: item.Viaje_Asoc
                 }
               this.lista.push(this.info)
             })
@@ -328,107 +338,72 @@ export default {
       },
       iniciarmodel () {
         this.selected = this.model.findIndex(element => {
-          if (element.event === 'Salida') {
+          if (element.event === 'Carga') {
             return element
           }
         })
       },
-      async cargafecha () {
-        if (this.objectViaje.origen.length === 0 && this.objectViaje.carga.length !== 0 && this.objectViaje.descarga.length !== 0) {
-          this.eventoOrigen = this.eventos.filter(item => item.descripcion === 'ORIGEN')
-          let fchaux = new Date()
-          if (this.rigthnow){
-             fchaux = new Date()
-          }else{
-            fchaux = new Date(this.fecha+' '+this.hora)
-          }
-          let payload = {
-            fchhorareal_Salida: fchaux.toISOString(),
-            id_Evento: this.eventoOrigen[0].id,
-            idviaje: this.objectViaje.carga[0].id_Viaje
-          }
-          this.enviarpostfecha(payload)
-        }
-
-        if (this.objectViaje.origen.length !== 0 && this.objectViaje.carga.length !== 0 && this.objectViaje.descarga.length !== 0) {
-          if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.origen[0].fchhorareal_Salida !== null && this.objectViaje.carga[0].fchhorareal_Llegada === null) {
-            let fchaux = new Date()
-            if (this.rigthnow) {
-             fchaux = new Date()
-            } else {
-              fchaux = new Date(this.fecha+' '+this.hora)
-            }
-            
-            if (fchaux.toISOString() > this.objectViaje.origen[0].fchhorareal_Salida) {
+      async guardarfecha () {
+        if (!this.errorTrue) {
+          if (this.objectViaje.carga.length !== 0 && this.objectViaje.descarga.length !== 0) {
+            if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Llegada === null && this.objectViaje.carga[0].fchhorareal_Salida === null) {
+              let fchaux = new Date()
+              if (this.rigthnow) {
+                fchaux = new Date()
+              } else {
+                fchaux = new Date(this.fecha + ' ' + this.hora)
+              }
               this.objectViaje.carga[0].fchhorareal_Llegada = fchaux.toISOString()
               this.enviarputfecha(this.objectViaje.carga[0], this.objectViaje.carga[0].id)
-            } else {
-              this.tipo = false
-              this.mensaje = 'Fecha de llegada a CARGA no puede ser menor o la misma de SALIDA'
-              this.titulo = '¡Error!'
-            }
-          } else if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.origen[0].fchhorareal_Salida !== null && this.objectViaje.carga[0].fchhorareal_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Salida === null) {
-            let fchaux = new Date()
-            if (this.rigthnow){
-             fchaux = new Date()
-            }else{
-              fchaux = new Date(this.fecha+' '+this.hora)
-            }
-            if ( fchaux.toISOString() > this.objectViaje.carga[0].fchhorareal_Llegada ) {
-              this.objectViaje.carga[0].fchhorareal_Salida = fchaux.toISOString()
-              this.enviarputfecha(this.objectViaje.carga[0], this.objectViaje.carga[0].id)
-            } else {
-              this.tipo = false
-              this.mensaje = 'Fecha de salida de CARGA no puede ser menor o la misma de llegada a CARGA'
-              this.titulo = '¡Error!'
-            }
 
-          } else if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.origen[0].fchhorareal_Salida !== null && this.objectViaje.carga[0].fchhorareal_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Salida !== null && this.objectViaje.descarga[0].fchhorareal_Llegada === null && this.objectViaje.descarga[0].fchhorareal_Salida === null ) {
-            let fchaux = new Date()
-            if (this.rigthnow){
-             fchaux = new Date()
-            }else{
-              fchaux = new Date(this.fecha+' '+this.hora)
-            }
-            if ( fchaux.toISOString() > this.objectViaje.carga[0].fchhorareal_Salida ) {
-              this.objectViaje.descarga[0].fchhorareal_Llegada = fchaux.toISOString()
-              this.enviarputfecha(this.objectViaje.descarga[0], this.objectViaje.descarga[0].id)
-            } else {
-              this.tipo = false
-              this.mensaje = 'Fecha de llegada a DESCARGA no puede ser menor o la misma de salida de CARGA'
-              this.titulo = '¡Error!'
-            }
+            } else if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Salida === null) {
+              let fchaux = new Date()
+              if (this.rigthnow) {
+                fchaux = new Date()
+              } else {
+                fchaux = new Date(this.fecha+' '+this.hora)
+              }
+              if ( fchaux.toISOString() > this.objectViaje.carga[0].fchhorareal_Llegada ) {
+                this.objectViaje.carga[0].fchhorareal_Salida = fchaux.toISOString()
+                this.enviarputfecha(this.objectViaje.carga[0], this.objectViaje.carga[0].id)
+              } else {
+                this.tipo = false
+                this.mensaje = 'Fecha de salida de CARGA no puede ser menor o la misma de llegada a CARGA'
+                this.titulo = '¡Error!'
+              }
 
-          } else if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.origen[0].fchhorareal_Salida !== null && this.objectViaje.carga[0].fchhorareal_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Salida !== null && this.objectViaje.descarga[0].fchhorareal_Salida === null && this.objectViaje.descarga[0].fchhorareal_Llegada !== null ) {
-            let fchaux = new Date()
-            if (this.rigthnow){
-             fchaux = new Date()
-            }else{
-              fchaux = new Date(this.fecha+' '+this.hora)
-            }
-            if ( fchaux.toISOString() > this.objectViaje.descarga[0].fchhorareal_Llegada ) {
-              this.objectViaje.descarga[0].fchhorareal_Salida = fchaux.toISOString()
-              this.enviarputfecha(this.objectViaje.descarga[0], this.objectViaje.descarga[0].id)
-            } else {
-              this.tipo = false
-              this.mensaje = 'Fecha de salida de DESCARGA no puede ser menor o la misma de llegada a DESCARGA'
-              this.titulo = '¡Error!'
-            }
+            } else if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Salida !== null && this.objectViaje.descarga[0].fchhorareal_Llegada === null && this.objectViaje.descarga[0].fchhorareal_Salida === null ) {
+              let fchaux = new Date()
+              if (this.rigthnow) {
+                fchaux = new Date()
+              } else {
+                fchaux = new Date(this.fecha+' '+this.hora)
+              }
+              
+              if ( fchaux.toISOString() > this.objectViaje.carga[0].fchhorareal_Salida ) {
+                this.objectViaje.descarga[0].fchhorareal_Llegada = fchaux.toISOString()
+                this.enviarputfecha(this.objectViaje.descarga[0], this.objectViaje.descarga[0].id)
+              } else {
+                this.tipo = false
+                this.mensaje = 'Fecha de llegada a DESCARGA no puede ser menor o la misma de salida de CARGA'
+                this.titulo = '¡Error!'
+              }
 
-          } else if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.origen[0].fchhorareal_Salida !== null && this.objectViaje.carga[0].fchhorareal_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Salida !== null && this.objectViaje.descarga[0].fchhorareal_Salida !== null && this.objectViaje.descarga[0].fchhorareal_Llegada !== null ) {
-            let fchaux = new Date()
-            if (this.rigthnow){
-             fchaux = new Date()
-            }else{
-              fchaux = new Date(this.fecha+' '+this.hora)
-            }
-            if ( fchaux.toISOString() > this.objectViaje.descarga[0].fchhorareal_Salida ) {
-              this.objectViaje.origen[0].fchhorareal_Llegada = fchaux.toISOString()
-              this.enviarputfecha(this.objectViaje.origen[0], this.objectViaje.origen[0].id)
-            } else {
-              this.tipo = false
-              this.mensaje = 'Fecha de RETORNO no puede ser la misma de salida de DESCARGA'
-              this.titulo = '¡Error!'
+            } else if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Salida !== null && this.objectViaje.descarga[0].fchhorareal_Salida === null && this.objectViaje.descarga[0].fchhorareal_Llegada !== null ) {
+              let fchaux = new Date()
+              if (this.rigthnow) {
+                fchaux = new Date()
+              } else {
+                fchaux = new Date(this.fecha+' '+this.hora)
+              }
+              if ( fchaux.toISOString() > this.objectViaje.descarga[0].fchhorareal_Llegada ) {
+                this.objectViaje.descarga[0].fchhorareal_Salida = fchaux.toISOString()
+                this.enviarputfecha(this.objectViaje.descarga[0], this.objectViaje.descarga[0].id)
+              } else {
+                this.tipo = false
+                this.mensaje = 'Fecha de salida de DESCARGA no puede ser menor o la misma de llegada a DESCARGA'
+                this.titulo = '¡Error!'
+              }
             }
           }
         }
@@ -443,54 +418,54 @@ export default {
           console.log(error)
         }
       },
-      async enviarpostfecha (payload) {
-        try{
-          await axios.post(`${this.dirapi}/amc/registrardetalleevento`, payload)
-          .then(resp => {
-            this.tipo = true
-            this.mensaje = 'Actualización Exitosa'
-            this.titulo = '¡BIEN!'
-          })
-          .catch(err => {
-            this.tipo = false
-            this.mensaje = 'Error al actualizar'
-            this.titulo = '¡Error!'
-          })
-        } catch (error) {
-          this.tipo = false
-          this.mensaje = 'Error al actualizar'
-          this.titulo = '¡Error!'
-        }
-      },
       async enviarputfecha (payload,idDet) {
         try {
           await axios.put(`${this.dirapi}/amc/putdetalleevento/${idDet}`, payload)
           .then(resp => {
-            this.tipo = true
-            this.mensaje = 'Actualización Exitosa'
-            this.titulo = '¡BIEN!'
+              this.tipo = true
+              this.mensaje = '¡Actualización de viaje '+ this.idViaje_message +' Exitosa!'
+              this.titulo = '¡BIEN!'
           })
           .catch(err => {
+            console.log(err)
             this.tipo = false
             this.mensaje = 'Error al actualizar'
             this.titulo = '¡Error!'
           })
         } catch (error) {
+          console.log(error)
           this.tipo = false
           this.mensaje = 'Error al actualizar'
           this.titulo = '¡Error!'
         }
       },
-      verificarFechas (data) {
-        this.objectViaje = {
-            origen : '',
-            carga : '', 
-            descarga : '' 
+      async obtenerdetalleseventos (id) {
+        try{
+        await axios.get(this.dirapi+'/amc/getdetallesviaje/'+id)
+            .then(resp => {
+              if (resp.data) {
+                this.verificarFechas(resp.data)
+                this.dialog = false
+                this.isEditing = false
+                this.rigthnow = false
+              }
+            })
+            .catch(error => {
+              console.log(error)
+              this.tipo = false
+              this.mensaje = 'Hubo un problema al cargar la información'
+              this.titulo = '¡Error!'
+            })
+        }catch(e){
+          this.tipo = false
+          this.mensaje = 'Error en el servidor'
+          this.titulo = '¡Error!'
         }
+      },
+      verificarFechas (data) {
+        this.objectViaje.carga = []
+        this.objectViaje.descarga = []
         this.eventos.forEach((ele, index) => {
-          if (index === 0) {
-            this.objectViaje.origen = data.filter(item => item.id_Evento === ele.id && ele.descripcion === 'ORIGEN')
-          }
           if (index === 1) {
             this.objectViaje.carga = data.filter(item => item.id_Evento === ele.id && ele.descripcion === 'CARGA')
           }
@@ -498,8 +473,8 @@ export default {
             this.objectViaje.descarga = data.filter(item => item.id_Evento === ele.id && ele.descripcion === 'DESCARGA')
           }
         })
-        if ( this.objectViaje.origen.length !== 0 && this.objectViaje.carga.length !== 0 && this.objectViaje.descarga.length !== 0 ) {
-          if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.origen[0].fchhorareal_Salida !== null && this.objectViaje.carga[0].fchhorareal_Salida === null && (this.objectViaje.carga[0].fchhorareal_Llegada === null || this.objectViaje.carga[0].fchhorareal_Llegada !== null )) {
+        if ( this.objectViaje.carga.length !== 0 && this.objectViaje.descarga.length !== 0 ) {
+          if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Salida === null && (this.objectViaje.carga[0].fchhorareal_Llegada === null || this.objectViaje.carga[0].fchhorareal_Llegada !== null )) {
             this.showInicio = false
             this.selected = this.model.findIndex(element => {
               if (element.event === 'Carga') {
@@ -509,25 +484,11 @@ export default {
             if (this.objectViaje.carga[0].fchhorareal_Llegada === null) {
               this.status = false
             }
-            if(this.objectViaje.carga[0].fchhorareal_Llegada !== null) {
+            if (this.objectViaje.carga[0].fchhorareal_Llegada !== null) {
               this.status = true
             }
           }
-        
-          if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.origen[0].fchhorareal_Salida !== null && this.objectViaje.origen[0].fchhorareal_Llegada === null && this.objectViaje.carga[0].fchhorareal_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Salida !== null && this.objectViaje.descarga[0].fchhorareal_Llegada !== null && this.objectViaje.descarga[0].fchhorareal_Salida !== null ) {
-            this.showInicio = false
-            this.selected = this.model.findIndex(element => {
-              if (element.event === 'Retorno') {
-                return element
-              }
-            })
-
-            if (this.objectViaje.descarga[0].fchhorareal_Llegada !== null && this.objectViaje.descarga[0].fchhorareal_Salida !== null) {
-              this.status = false
-            }
-          }
-
-          if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.origen[0].fchhorareal_Salida !== null && this.objectViaje.carga[0].fchhorareal_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Salida !== null && this.objectViaje.descarga[0].fchhorareal_Salida === null && (this.objectViaje.descarga[0].fchhorareal_Llegada !== null || this.objectViaje.descarga[0].fchhorareal_Llegada === null) ) {
+          if (this.objectViaje.carga[0].fchhoraestimada_Llegada !== null && this.objectViaje.descarga[0].fchhoraestimada_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Llegada !== null && this.objectViaje.carga[0].fchhorareal_Salida !== null && this.objectViaje.descarga[0].fchhorareal_Salida === null && (this.objectViaje.descarga[0].fchhorareal_Llegada !== null || this.objectViaje.descarga[0].fchhorareal_Llegada === null) ) {
             this.showInicio = false
             this.selected = this.model.findIndex(element => {
               if (element.event === 'Descarga') {
@@ -543,19 +504,7 @@ export default {
             }
           }
         }
-        if (this.objectViaje.origen.length === 0 && this.objectViaje.carga.length !== 0 && this.objectViaje.descarga.length !== 0) {
-          this.showInicio = true
-          this.selected = this.model.findIndex(element => {
-            if (element.event === 'Salida') {
-              return element
-            }
-          })
-
-          if(this.objectViaje.origen.length === 0) {
-            this.status = true
-          }
-        }
       }
-    },
+    }
 }
 </script>

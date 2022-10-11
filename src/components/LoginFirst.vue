@@ -29,6 +29,7 @@
           hint="Al menos 5 caracteres"
           :rules="contraseniaRules"
           :counter="16"
+          autocomplete='off'
           ></v-text-field>
           <v-btn
           class="mr-4"
