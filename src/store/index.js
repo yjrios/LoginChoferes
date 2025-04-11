@@ -8,7 +8,7 @@ export default new Vuex.Store({
   state: {
     datos: [],
     errores: [],
-    dirapi: process.env.VUE_APP_BASE_URL,
+    dirapi: process.env.VUE_APP_BASE_URL_LOCAL,
     lista: []
   },
   getters: {
@@ -38,7 +38,7 @@ export default new Vuex.Store({
   actions: {
     async iniciarSesion({commit}, payload) {
       try {
-         await axios.post(process.env.VUE_APP_BASE_URL + '/amc/login', payload)
+         await axios.post(process.env.VUE_APP_BASE_URL_LOCAL + '/amc/login', payload)
          .then(res => {
            if (res.data.length !== 0) {
             localStorage.setItem('placa', payload.usuario)
